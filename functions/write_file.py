@@ -25,3 +25,27 @@ def write_file(working_directory: str, file_path: str, content: str) -> str:
 
     except Exception as e:  # noqa: BLE001
         return f'Error: {e}'
+
+
+
+schema_write_file = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": "writes the content provided as argument to a specific file in the working directory",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Directory path to the file the content is to be written to, relative to the working directory",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The content that will be written to the specified file"
+                }
+            },
+            "required": ["file_path", "content"],
+        },
+    },
+}

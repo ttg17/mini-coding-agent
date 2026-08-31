@@ -24,41 +24,31 @@ class Calculator:
         tokens = expression.strip().split()
         return self._evaluate_infix(tokens)
 
-    def _evaluate_infix(self, tokens: list[str]) -> float:
+    def _evaluate_infix(self, tokens: list[str]) -> float | None:
         values: list[float] = []
         operators: list[str] = []
 
         for token in tokens:
             if token in self.operators:
+                # Pop operators with higher or equal precedence (left-associative)
                 while (
                     operators
-                    and operators[-1] in self.operators
+                    and operators[-1] in self.precedence
                     and self.precedence[operators[-1]] >= self.precedence[token]
                 ):
-                    self._apply_operator(operators, values)
+                    op = operators.pop()
+                    b = values.pop()
+                    a = values.pop()
+                    values.append(self.operators[op](a, b))
                 operators.append(token)
             else:
-                try:
-                    values.append(float(token))
-                except ValueError:
-                    raise ValueError(f"invalid token: {token}")
+                values.append(float(token))
 
+        # Apply remaining operators
         while operators:
-            self._apply_operator(operators, values)
+            op = operators.pop()
+            b = values.pop()
+            a = values.pop()
+            values.append(self.operators[op](a, b))
 
-        if len(values) != 1:
-            raise ValueError("invalid expression")
-
-        return values[0]
-
-    def _apply_operator(self, operators: list[str], values: list[float]) -> None:
-        if not operators:
-            return
-
-        operator = operators.pop()
-        if len(values) < 2:
-            raise ValueError(f"not enough operands for operator {operator}")
-
-        b = values.pop()
-        a = values.pop()
-        values.append(self.operators[operator](a, b))
+        return values[0] if values else None

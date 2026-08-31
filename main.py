@@ -1,17 +1,21 @@
 import argparse
 import os
+import sys
 
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from call_function import available_functions, call_function
+from prompts import system_prompt
 
 
 def generate_content(client, messages):
     response = client.chat.completions.create(
     model="openrouter/free",
-    messages=messages # type: ignore
+    messages=messages, # type: ignore
+    tools=available_functions,
     )
     return response
-
 
 
 load_dotenv()
@@ -32,18 +36,40 @@ client = OpenAI(
 )
 
 messages = [
-        {"role": "user", "content": args.user_prompt},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt},
 ]
 
-response = generate_content(client, messages)
+max_iterate = 25
+for _ in range(max_iterate):
+    response = generate_content(client, messages)
 
-if not response.usage:
-        raise RuntimeError("probably a failed API request")
-if verbose:
-    print("User prompt:", messages[0]["content"])
-    print("Prompt tokens:", response.usage.prompt_tokens)
-    print("Response tokens:", response.usage.completion_tokens)
+    if not response.usage:
+            raise RuntimeError("probably a failed API request")
 
-print("Response:")
-print(response.choices[0].message.content)
+    # if verbose:
+    #     print("User prompt:", messages[0]["content"])
+    #     print("Prompt tokens:", response.usage.prompt_tokens)
+    #     print("Response tokens:", response.usage.completion_tokens)
+
+    message = response.choices[0].message
+    messages.append(message)
+
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            result_message = call_function(tool_call, verbose)
+
+            if not result_message['content']:
+                raise RuntimeError("the result_message has no content property")
+            if verbose:
+                print(f"-> {result_message['content']}")
+
+            messages.append(result_message)
+
+    else:
+        print("Final response:")
+        print(response.choices[0].message.content)
+        break
+else:
+    print(f"It seems like the agent couldn't do what was asked in {max_iterate} iterations.")
+    sys.exit(1)
